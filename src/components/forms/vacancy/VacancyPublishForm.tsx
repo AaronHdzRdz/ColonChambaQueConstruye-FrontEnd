@@ -14,6 +14,7 @@ import VacancyInfoSection from './VacancyInfoSection';
 import RequiredExperience from './RequiredExperience';
 
 import { apiService } from '@/services/api.service';
+import Alert from '@/components/ui/Alerts';
 import { useCompanyStore } from '@/app/store/authCompanyStore';
 import { useRouter } from 'next/navigation';
 import BaseModalTemplate, { ModalTexts } from '@/components/ui/modal/ConfirmModalTemplate';
@@ -74,6 +75,8 @@ export default function PostJobForm() {
   const [submittedData, setSubmittedData] = useState<VacancyFormType | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingData, setPendingData] = useState<VacancyFormType | null>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
 
   const publishVacancy = async (values: VacancyFormType) => {
     try {
@@ -133,6 +136,12 @@ export default function PostJobForm() {
       if (!response?.ok) {
         const err = await response.json().catch(() => null);
         console.error('Error backend:', err);
+        const status = response.status;
+        if (status === 400 || status === 409) {
+          setAlertMessage('Petición incorrecta, Revisa los datos o intenta mas tarde');
+          setAlertVisible(true);
+          return;
+        }
         throw new Error(err?.message || 'No se pudo crear la vacante');
       }
 
@@ -197,6 +206,13 @@ export default function PostJobForm() {
         open={showConfirmModal}
         onClose={handleCancel}
         onConfirm={handleConfirm}
+      />
+      <Alert
+        type="error"
+        title="Petición incorrecta"
+        description={alertMessage}
+        isVisible={alertVisible}
+        onClose={() => setAlertVisible(false)}
       />
     </FormProvider>
   );
