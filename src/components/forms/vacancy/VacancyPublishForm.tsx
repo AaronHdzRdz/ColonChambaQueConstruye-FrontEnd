@@ -16,6 +16,29 @@ import RequiredExperience from './RequiredExperience';
 import { apiService } from '@/services/api.service';
 import { useCompanyStore } from '@/app/store/authCompanyStore';
 import { useRouter } from 'next/navigation';
+import BaseModalTemplate, { ModalTexts } from '@/components/ui/modal/ConfirmModalTemplate';
+
+const MODAL_NOTICE_REVIEW_TEXTS: ModalTexts = {
+  title: 'Publicar vacante',
+  subtitle: '¿Estas seguro de querer publicar la vacante esta pasara a estado de revision una vez que confirmes?',
+  cancel: 'Cancelar',
+  confirm: 'Aceptar',
+};
+
+function Confirm({
+  onClose,
+  onConfirm,
+  open = true,
+}: { onClose: () => void; onConfirm: () => void; open?: boolean }) {
+  return (
+    <BaseModalTemplate
+      open={open}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      texts={MODAL_NOTICE_REVIEW_TEXTS}
+    />
+  );
+}
 
 export default function PostJobForm() {
   const methods = useForm<VacancyFormType>({
@@ -44,13 +67,15 @@ export default function PostJobForm() {
     },
   });
 
-  const { control, handleSubmit } = methods;
+  const { control, handleSubmit, formState: { errors } } = methods;
   const router = useRouter();
   const { companyId } = useCompanyStore();
 
   const [submittedData, setSubmittedData] = useState<VacancyFormType | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingData, setPendingData] = useState<VacancyFormType | null>(null);
 
-  const onSubmit = async (values: VacancyFormType) => {
+  const publishVacancy = async (values: VacancyFormType) => {
     try {
       if (!companyId) {
         throw new Error('No se encontró companyId en sesión');
@@ -92,14 +117,12 @@ export default function PostJobForm() {
         additionalInformation: values.additionalInformation,
       };
 
-      console.log('Payload enviado:', payload);
       setSubmittedData(values);
 
       const response = await apiService.post(
         `/companies/${companyId}/vacancies`,
         payload
       );
-
 
       if (!response?.ok) {
         const err = await response.json().catch(() => null);
@@ -108,7 +131,6 @@ export default function PostJobForm() {
       }
 
       const data = await response.json();
-      console.log('Vacante creada con ID:', data?.data?.id);
 
       router.push('/employer/home/vacancies');
     } catch (err: any) {
@@ -116,10 +138,30 @@ export default function PostJobForm() {
     }
   };
 
+  const onSubmit = (values: VacancyFormType) => {
+    setPendingData(values);
+    setShowConfirmModal(true);
+  };
+
+  const onError = (errors: any) => {
+  };
+
+  const handleConfirm = () => {
+    setShowConfirmModal(false);
+    if (pendingData) {
+      publishVacancy(pendingData);
+    }
+  };
+
+  const handleCancel = () => {
+    setShowConfirmModal(false);
+    setPendingData(null);
+  };
+
   return (
     <FormProvider {...methods}>
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmit, onError)}
         className="mx-12 bg-white pt-12 space-y-4"
       >
         <h2 className="text-4xl font-bold text-center text-[var(--secundary)]">
@@ -138,9 +180,18 @@ export default function PostJobForm() {
         <InterestAreasSelector control={control} />
 
         <div className="flex justify-end">
-          <Button type="submit">Publicar</Button>
+          <Button
+            type="submit"
+          >
+            Publicar
+          </Button>
         </div>
       </form>
+      <Confirm
+        open={showConfirmModal}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+      />
     </FormProvider>
   );
 }
