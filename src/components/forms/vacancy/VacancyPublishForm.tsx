@@ -56,7 +56,7 @@ export default function PostJobForm() {
       maxAge: '',
       requiredDegree: 'INDIFERENTE',
       currency: 'mxn',
-      minSalary: '',
+      minSalary: '1000',
       maxSalary: '',
       benefits: '',
       workingDays: [],
@@ -116,6 +116,12 @@ export default function PostJobForm() {
 
         additionalInformation: values.additionalInformation,
       };
+
+      // Backend requires max > min; if user set equal values, increment max by 1
+      if (!isNaN(payload.salary.min) && !isNaN(payload.salary.max) && payload.salary.max <= payload.salary.min) {
+        payload.salary.max = payload.salary.min + 1;
+        console.warn('Adjusted salary.max to be greater than salary.min to satisfy backend requirements.');
+      }
 
       setSubmittedData(values);
 
